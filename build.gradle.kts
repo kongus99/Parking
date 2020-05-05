@@ -21,19 +21,16 @@ repositories {
 }
 
 dependencies {
-    // This dependency is used by the application.
-    implementation("com.google.guava:guava:28.2-jre")
+    testImplementation("org.junit.jupiter:junit-jupiter-params:5.6.2")
 
-    // Use JUnit Jupiter API for testing.
-    testImplementation("org.junit.jupiter:junit-jupiter-api:5.6.0")
+    testImplementation("org.junit.jupiter:junit-jupiter-api:5.6.2")
 
-    // Use JUnit Jupiter Engine for testing.
-    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.6.0")
+    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.6.2")
 }
 
 application {
     // Define the main class for the application.
-    mainClassName = "org.par.App"
+    mainClassName = "org.par.Parking"
 }
 
 val test by tasks.getting(Test::class) {
