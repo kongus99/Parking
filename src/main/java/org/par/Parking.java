@@ -2,6 +2,7 @@ package org.par;
 
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -10,10 +11,12 @@ import static org.par.Parking.EngineType.*;
 
 public class Parking {
 
+    private final Function<Ticket, Float> pricing;
     private final Map<EngineType, List<Slot>> slots;
     private final Set<Ticket> tickets = new HashSet<>();
 
-    public Parking(Map<EngineType, List<String>> slots) {
+    public Parking(Function<Ticket, Float> pricing, Map<EngineType, List<String>> slots) {
+        this.pricing = pricing;
         this.slots = slots.entrySet()
                 .stream()
                 .collect(toMap(Map.Entry::getKey, e -> e.getValue()
@@ -51,10 +54,20 @@ public class Parking {
             return Optional.empty();
     }
 
-    public boolean leave(Ticket ticket) {
-        slots.merge(ticket.slot.engineType, List.of(ticket.slot), (l1, l2) ->
-                Stream.concat(l1.stream(), l2.stream()).collect(Collectors.toList()));
-        return tickets.remove(ticket);
+    public float leave(Ticket ticket, float payment) {
+        if (tickets.contains(ticket)) {
+            var owed = checkOwed(ticket);
+            if (payment < owed)
+                throw new ParkingException("Insufficient payment:" + payment + " ,required:" + owed);
+            slots.merge(ticket.slot.engineType, List.of(ticket.slot), (l1, l2) ->
+                    Stream.concat(l1.stream(), l2.stream()).collect(Collectors.toList()));
+            tickets.remove(ticket);
+            return payment - owed;
+        } else throw new ParkingException("Unknown ticket " + ticket.id);
+    }
+
+    public float checkOwed(Ticket t) {
+        return pricing.apply(t);
     }
 
     public enum EngineType {
@@ -113,5 +126,9 @@ public class Parking {
         }
     }
 
-    //receipt
+    public static class ParkingException extends RuntimeException {
+        public ParkingException(String cause) {
+            super(cause);
+        }
+    }
 }
