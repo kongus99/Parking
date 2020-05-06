@@ -52,7 +52,7 @@ public class Parking {
     }
 
     public boolean leave(Ticket ticket) {
-        slots.merge(ticket.slot.engineType, List.of(ticket.slot), (l1,l2) ->
+        slots.merge(ticket.slot.engineType, List.of(ticket.slot), (l1, l2) ->
                 Stream.concat(l1.stream(), l2.stream()).collect(Collectors.toList()));
         return tickets.remove(ticket);
     }
@@ -104,10 +104,7 @@ public class Parking {
             if (this == o) return true;
             if (o == null || getClass() != o.getClass()) return false;
             Ticket ticket = (Ticket) o;
-            return id.equals(ticket.id) &&
-                    engineType == ticket.engineType &&
-                    issueTime.equals(ticket.issueTime) &&
-                    slot.equals(ticket.slot);
+            return id.equals(ticket.id) && engineType == ticket.engineType && issueTime.equals(ticket.issueTime) && slot.equals(ticket.slot);
         }
 
         @Override

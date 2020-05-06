@@ -46,6 +46,15 @@ public class ParkingTest {
         assertRightSlotAssigned(parking, null, GAS);
     }
 
+    @Test
+    void differentSlotTypesCanBeAssignedForGasEngines() {
+        var parking = new Parking(Map.of(GAS, List.of("A"), ELECTRIC, List.of("B"), HI_ELECTRIC, List.of("C")));
+        assertRightSlotAssigned(parking, new Ticket(GAS, new Slot("A", GAS)), GAS);
+        assertRightSlotAssigned(parking, new Ticket(GAS, new Slot("B", ELECTRIC)), GAS);
+        assertRightSlotAssigned(parking, new Ticket(GAS, new Slot("C", HI_ELECTRIC)), GAS);
+        assertRightSlotAssigned(parking, null, GAS);
+    }
+
     @TestFactory
     Stream<DynamicTest> parkingCanHaveNumberOfSlotsConfigured() {
         var seed = System.currentTimeMillis();
@@ -85,6 +94,7 @@ public class ParkingTest {
                 assertTrue(i.issueTime.isBefore(LocalDateTime.now().plus(1, ChronoUnit.SECONDS)),
                         "Non valid timestamp was issued");
                 assertNotEquals(expected.map(t -> t.id), issued.map(t -> t.id));
+                assertNotEquals(expected, issued);
             });
         }
 
