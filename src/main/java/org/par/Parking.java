@@ -1,19 +1,25 @@
 package org.par;
 
-import javax.lang.model.util.Types;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toMap;
 import static org.par.Parking.EngineType.*;
 
 public class Parking {
 
-    private final Map<EngineType, List<String>> slots;
+    private final Map<EngineType, List<Slot>> slots;
     private final Set<Ticket> tickets = new HashSet<>();
 
     public Parking(Map<EngineType, List<String>> slots) {
-        this.slots = slots.entrySet().stream().collect(toMap(Map.Entry::getKey, e -> new ArrayList<>(e.getValue())));
+        this.slots = slots.entrySet()
+                .stream()
+                .collect(toMap(Map.Entry::getKey, e -> e.getValue()
+                        .stream()
+                        .map(id -> new Slot(id, e.getKey()))
+                        .collect(Collectors.toList())));
     }
 
     public Optional<Ticket> enter(EngineType engineType) {
@@ -31,13 +37,13 @@ public class Parking {
         }
     }
 
-    private Ticket createTicket(EngineType engineType, String slot) {
+    private Ticket createTicket(EngineType engineType, Slot slot) {
         var ticket = new Ticket(engineType, slot);
         tickets.add(ticket);
         return ticket;
     }
 
-    private Optional<String> assign(EngineType t) {
+    private Optional<Slot> assign(EngineType t) {
         var matchingSlots = slots.putIfAbsent(t, new ArrayList<>());
         if (matchingSlots != null && !matchingSlots.isEmpty())
             return Optional.of(matchingSlots.remove(0));
@@ -46,6 +52,8 @@ public class Parking {
     }
 
     public boolean leave(Ticket ticket) {
+        slots.merge(ticket.slot.engineType, List.of(ticket.slot), (l1,l2) ->
+                Stream.concat(l1.stream(), l2.stream()).collect(Collectors.toList()));
         return tickets.remove(ticket);
     }
 
@@ -53,14 +61,39 @@ public class Parking {
         GAS, ELECTRIC, HI_ELECTRIC
     }
 
+    public static final class Slot {
+        public final String id;
+        public final EngineType engineType;
+
+        public Slot(String id, EngineType engineType) {
+            this.id = id;
+            this.engineType = engineType;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            Slot slot = (Slot) o;
+            return id.equals(slot.id) &&
+                    engineType == slot.engineType;
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(id, engineType);
+        }
+    }
+
+
     public static final class Ticket {
         public final UUID id;
         public final EngineType engineType;
         public final LocalDateTime issueTime;
-        public final String slotId;
+        public final Slot slot;
 
-        public Ticket(EngineType engineType, String slotId) {
-            this.slotId = slotId;
+        public Ticket(EngineType engineType, Slot slot) {
+            this.slot = slot;
             this.id = UUID.randomUUID();
             this.engineType = engineType;
             this.issueTime = LocalDateTime.now();
@@ -74,12 +107,12 @@ public class Parking {
             return id.equals(ticket.id) &&
                     engineType == ticket.engineType &&
                     issueTime.equals(ticket.issueTime) &&
-                    slotId.equals(ticket.slotId);
+                    slot.equals(ticket.slot);
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(id, engineType, issueTime, slotId);
+            return Objects.hash(id, engineType, issueTime, slot);
         }
     }
 

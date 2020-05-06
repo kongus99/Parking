@@ -17,9 +17,9 @@ import java.util.stream.Stream;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
 import static org.junit.jupiter.api.Assertions.*;
-import static org.par.Parking.EngineType;
+import static org.par.Parking.*;
 import static org.par.Parking.EngineType.*;
-import static org.par.Parking.Ticket;
+import static org.par.ParkingTest.ParkingAssertions.assertEnterAndLeave;
 import static org.par.ParkingTest.ParkingAssertions.assertRightSlotAssigned;
 
 public class ParkingTest {
@@ -38,9 +38,9 @@ public class ParkingTest {
     @Test
     void whenEnteringParkingYouGetTicketForRightCarType() {
         var parking = new Parking(Map.of(GAS, List.of("A"), ELECTRIC, List.of("B"), HI_ELECTRIC, List.of("C")));
-        assertRightSlotAssigned(parking, new Ticket(GAS, "A"), GAS);
-        assertRightSlotAssigned(parking, new Ticket(ELECTRIC, "B"), ELECTRIC);
-        assertRightSlotAssigned(parking, new Ticket(HI_ELECTRIC, "C"), HI_ELECTRIC);
+        assertRightSlotAssigned(parking, new Ticket(GAS, new Slot("A", GAS)), GAS);
+        assertRightSlotAssigned(parking, new Ticket(ELECTRIC, new Slot("B", ELECTRIC)), ELECTRIC);
+        assertRightSlotAssigned(parking, new Ticket(HI_ELECTRIC, new Slot("C", HI_ELECTRIC)), HI_ELECTRIC);
         assertRightSlotAssigned(parking, null, ELECTRIC);
         assertRightSlotAssigned(parking, null, HI_ELECTRIC);
         assertRightSlotAssigned(parking, null, GAS);
@@ -58,23 +58,29 @@ public class ParkingTest {
 
     @ParameterizedTest
     @CsvSource({"ELECTRIC", "GAS", "ELECTRIC", "GAS", "HI_ELECTRIC"})
-    void youCanOnlyLeaveWhenPossessingValidTicket(EngineType engineType) {
+    void parkingSlotsCanBeReused(EngineType engineType) {
         var parking = new Parking(Map.of(engineType, List.of("A")));
-        assertFalse(parking.leave(new Ticket(engineType, "A")), "Spoofed ticket should not work.");
-        parking.enter(engineType).ifPresentOrElse(t -> {
-            assertTrue(parking.leave(t), "Issued ticket should work the first time.");
-            assertFalse(parking.leave(t), "Issued ticket should not work the second time.");
-        }, () -> {
-            throw new AssertionError("Ticket was not generated");
-        });
+        assertFalse(parking.leave(new Ticket(engineType, new Slot("A", engineType))), "Spoofed ticket should not work.");
+        assertEnterAndLeave(parking, engineType);
+        assertEnterAndLeave(parking, engineType);
     }
 
     public static class ParkingAssertions {
+
+        static void assertEnterAndLeave(Parking parking, EngineType engineType) {
+            parking.enter(engineType).ifPresentOrElse(t -> {
+                assertTrue(parking.leave(t), "Issued ticket should work the first time.");
+                assertFalse(parking.leave(t), "Issued ticket should not work the second time.");
+            }, () -> {
+                throw new AssertionError("Ticket was not generated");
+            });
+        }
+
         static void assertRightSlotAssigned(Parking parking, Ticket ticket, EngineType engineType) {
             var issued = parking.enter(engineType);
             var expected = Optional.ofNullable(ticket);
             assertEquals(expected.map(t -> t.engineType), issued.map(t -> t.engineType));
-            assertEquals(expected.map(t -> t.slotId), issued.map(t -> t.slotId));
+            assertEquals(expected.map(t -> t.slot), issued.map(t -> t.slot));
             issued.ifPresent(i -> {
                 assertTrue(i.issueTime.isBefore(LocalDateTime.now().plus(1, ChronoUnit.SECONDS)),
                         "Non valid timestamp was issued");
@@ -84,7 +90,7 @@ public class ParkingTest {
 
         static void assertParkingCapacity(Parking parking, EngineType engineType, int carsNumber) {
             IntStream.range(0, carsNumber).forEach(i ->
-                    assertRightSlotAssigned(parking, new Ticket(engineType, generateName(engineType, i)), engineType)
+                    assertRightSlotAssigned(parking, new Ticket(engineType, new Slot(generateName(engineType, i), engineType)), engineType)
             );
             assertRightSlotAssigned(parking, null, engineType);
         }
