@@ -2,7 +2,9 @@ package org.parking.service;
 
 import org.parking.conf.ParkingConfiguration;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.bind.annotation.ResponseStatus;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -148,6 +150,7 @@ public class Parking {
         }
     }
 
+    @ResponseStatus(value = HttpStatus.BAD_REQUEST)
     public static class ParkingException extends RuntimeException {
         public ParkingException(String cause) {
             super(cause);
