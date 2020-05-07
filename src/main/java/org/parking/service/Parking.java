@@ -86,6 +86,13 @@ public class Parking {
         return Optional.ofNullable(tickets.get(id));
     }
 
+    public List<Ticket> getTickets() {
+        return tickets.values()
+                .stream()
+                .sorted(Comparator.comparing(ticket -> ticket.issueTime))
+                .collect(Collectors.toList());
+    }
+
     public enum EngineType {
         GAS, ELECTRIC, HI_ELECTRIC
     }

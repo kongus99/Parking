@@ -47,6 +47,9 @@ public class ParkingTest {
         assertRightSlotAssigned(parking, new Ticket(GAS, new Slot("A", GAS)), GAS);
         assertRightSlotAssigned(parking, new Ticket(ELECTRIC, new Slot("B", ELECTRIC)), ELECTRIC);
         assertRightSlotAssigned(parking, new Ticket(HI_ELECTRIC, new Slot("C", HI_ELECTRIC)), HI_ELECTRIC);
+        var allTickets = parking.getTickets();
+        assertEquals(allTickets.size(), 3);
+        assertEquals(new ArrayList<>(allTickets).stream().sorted(Comparator.comparing(t -> t.issueTime)).collect(toList()), allTickets);
         assertRightSlotAssigned(parking, null, ELECTRIC);
         assertRightSlotAssigned(parking, null, HI_ELECTRIC);
         assertRightSlotAssigned(parking, null, GAS);
