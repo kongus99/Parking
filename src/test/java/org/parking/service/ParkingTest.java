@@ -1,4 +1,4 @@
-package org.par;
+package org.parking.service;
 
 import javafx.util.Pair;
 import org.junit.jupiter.api.DynamicTest;
@@ -24,9 +24,9 @@ import static java.time.temporal.ChronoUnit.DAYS;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
 import static org.junit.jupiter.api.Assertions.*;
-import static org.par.Parking.*;
-import static org.par.Parking.EngineType.*;
-import static org.par.ParkingTest.ParkingAssertions.*;
+import static org.parking.service.Parking.*;
+import static org.parking.service.Parking.EngineType.*;
+import static org.parking.service.ParkingTest.ParkingAssertions.*;
 
 public class ParkingTest {
     private static String generateName(EngineType engineType, int i) {

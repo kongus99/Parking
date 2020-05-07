@@ -1,4 +1,8 @@
-package org.par;
+package org.parking.service;
+
+import org.parking.conf.ParkingConfiguration;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -7,14 +11,19 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toMap;
-import static org.par.Parking.EngineType.*;
+import static org.parking.service.Parking.EngineType.*;
 
+@Service
 public class Parking {
 
     private final Function<Ticket, Double> pricing;
     private final Map<EngineType, List<Slot>> slots;
     private final Map<UUID, Ticket> tickets = new HashMap<>();
 
+    @Autowired
+    public Parking(ParkingConfiguration config) {
+        this(config::pricing, config.slots());
+    }
 
     public Parking(Function<Ticket, Double> pricing, Map<EngineType, List<String>> slots) {
         this.pricing = pricing;
@@ -98,7 +107,6 @@ public class Parking {
             return id.equals(slot.id) &&
                     engineType == slot.engineType;
         }
-
         @Override
         public int hashCode() {
             return Objects.hash(id, engineType);
