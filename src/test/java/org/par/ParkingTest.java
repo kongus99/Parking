@@ -43,7 +43,7 @@ public class ParkingTest {
 
     @Test
     void whenEnteringParkingYouGetTicketForRightCarType() {
-        var parking = new Parking(t -> 0f, Map.of(GAS, List.of("A"), ELECTRIC, List.of("B"), HI_ELECTRIC, List.of("C")));
+        var parking = new Parking(t -> 0.0, Map.of(GAS, List.of("A"), ELECTRIC, List.of("B"), HI_ELECTRIC, List.of("C")));
         assertRightSlotAssigned(parking, new Ticket(GAS, new Slot("A", GAS)), GAS);
         assertRightSlotAssigned(parking, new Ticket(ELECTRIC, new Slot("B", ELECTRIC)), ELECTRIC);
         assertRightSlotAssigned(parking, new Ticket(HI_ELECTRIC, new Slot("C", HI_ELECTRIC)), HI_ELECTRIC);
@@ -54,7 +54,7 @@ public class ParkingTest {
 
     @Test
     void differentSlotTypesCanBeAssignedForGasEngines() {
-        var parking = new Parking(t -> 0f, Map.of(GAS, List.of("A"), ELECTRIC, List.of("B"), HI_ELECTRIC, List.of("C")));
+        var parking = new Parking(t -> 0.0, Map.of(GAS, List.of("A"), ELECTRIC, List.of("B"), HI_ELECTRIC, List.of("C")));
         assertRightSlotAssigned(parking, new Ticket(GAS, new Slot("A", GAS)), GAS);
         assertRightSlotAssigned(parking, new Ticket(GAS, new Slot("B", ELECTRIC)), GAS);
         assertRightSlotAssigned(parking, new Ticket(GAS, new Slot("C", HI_ELECTRIC)), GAS);
@@ -74,11 +74,11 @@ public class ParkingTest {
     @ParameterizedTest
     @CsvSource({"ELECTRIC", "GAS", "ELECTRIC", "GAS", "HI_ELECTRIC"})
     void parkingSlotsCanBeReused(EngineType engineType) {
-        var parking = new Parking(t -> 0f, Map.of(engineType, List.of("A")));
-        assertThrows(ParkingException.class, () -> parking.leave(new Ticket(engineType, new Slot("A", engineType)), 0),
+        var parking = new Parking(t -> 0.0, Map.of(engineType, List.of("A")));
+        assertThrows(ParkingException.class, () -> parking.leave(new Ticket(engineType, new Slot("A", engineType)).id, 0),
                 "Spoofed ticket should not work.");
         assertEnterAndLeave(parking, engineType);
-        assertThrows(ParkingException.class, () -> parking.leave(new Ticket(engineType, new Slot("A", engineType)), 0),
+        assertThrows(ParkingException.class, () -> parking.leave(new Ticket(engineType, new Slot("A", engineType)).id, 0),
                 "Spoofed ticket should not work.");
         assertEnterAndLeave(parking, engineType);
         assertRightSlotAssigned(parking, new Ticket(engineType, new Slot("A", engineType)), engineType);
@@ -87,32 +87,32 @@ public class ParkingTest {
 
     @Test
     void youCanOnlyLeaveOnlyWhenYouPayEnough() {
-        Function<Ticket, Float> pricing = t -> {
+        Function<Ticket, Double> pricing = t -> {
             switch (t.engineType) {
                 case GAS:
-                    return Duration.between(t.issueTime, LocalDateTime.now().plus(4, DAYS)).toHours() * 5f + 20f;
+                    return Duration.between(t.issueTime, LocalDateTime.now().plus(4, DAYS)).toHours() * 5.0 + 20.0;
                 case ELECTRIC:
-                    return Duration.between(t.issueTime, LocalDateTime.now().plus(2, DAYS)).toHours() * 10f + 10f;
+                    return Duration.between(t.issueTime, LocalDateTime.now().plus(2, DAYS)).toHours() * 10.0 + 10.0;
                 case HI_ELECTRIC:
                 default:
-                    return Duration.between(t.issueTime, LocalDateTime.now().plus(1, DAYS)).toHours() * 15f + 5f;
+                    return Duration.between(t.issueTime, LocalDateTime.now().plus(1, DAYS)).toHours() * 15.0 + 5.0;
             }
         };
         var parking = new Parking(pricing, Map.of(GAS, List.of("A"), ELECTRIC, List.of("B"), HI_ELECTRIC, List.of("C")));
-        assertPays(parking, GAS, 500f, 499f, 501f);
-        assertPays(parking, ELECTRIC, 490f, 480f, 490f);
-        assertPays(parking, HI_ELECTRIC, 365f, 300f, 400f);
+        assertPays(parking, GAS, 500, 499, 501);
+        assertPays(parking, ELECTRIC, 490, 480, 490);
+        assertPays(parking, HI_ELECTRIC, 365, 300, 400);
     }
 
     @Test
     void enteringAndLeavingMustBeSynchronized() {
-        var parking = new Parking(t -> 0f, Map.of(GAS, List.of("A")));
+        var parking = new Parking(t -> 0.0, Map.of(GAS, List.of("A")));
         var pool = Executors.newFixedThreadPool(5);
         Map<Integer, Pair<LocalDateTime, LocalDateTime>> runResults = new ConcurrentHashMap<>();
         var parkingEntries = 1000;
         var yesterday = LocalDateTime.now().minus(1, DAYS);
         IntStream.range(0, parkingEntries).boxed().map(i -> pool.submit(() -> parking.enter(GAS).ifPresentOrElse(
-                t -> runResults.put(i, new Pair<>(t.issueTime, parking.leave(t, 0f))),
+                t -> runResults.put(i, new Pair<>(t.issueTime, parking.leave(t.id, 0f))),
                 () -> runResults.put(i, new Pair<>(yesterday, yesterday)))))
                 .parallel().forEach(
                 f -> {
@@ -153,17 +153,17 @@ public class ParkingTest {
 
         static void assertEnterAndLeave(Parking parking, EngineType engineType) {
             checkTicket(parking, engineType, t -> {
-                assertTrue(parking.leave(t, 0).compareTo(LocalDateTime.now()) <=0, "Ticket should work");
-                assertThrows(ParkingException.class, () -> parking.leave(t, 0), "Issued ticket should not work the second time");
+                assertTrue(parking.leave(t.id, 0).compareTo(LocalDateTime.now()) <= 0, "Ticket should work");
+                assertThrows(ParkingException.class, () -> parking.leave(t.id, 0), "Issued ticket should not work the second time");
             });
         }
 
-        static void assertPays(Parking parking, EngineType engineType, float exact, float insufficient, float sufficient) {
+        static void assertPays(Parking parking, EngineType engineType, double exact, double insufficient, double sufficient) {
             checkTicket(parking, engineType, t -> {
-                assertEquals(exact, parking.checkOwed(t));
-                assertThrows(ParkingException.class, () -> parking.leave(t, insufficient), "Should not leave because of insufficient payment");
-                assertTrue(parking.leave(t, sufficient).compareTo(LocalDateTime.now()) <=0, "This amount should be sufficient to leave");
-                assertThrows(ParkingException.class, () -> parking.leave(t, sufficient), "Should be already paid");
+                assertEquals(exact, parking.checkOwed(t.id));
+                assertThrows(ParkingException.class, () -> parking.leave(t.id, insufficient), "Should not leave because of insufficient payment");
+                assertTrue(parking.leave(t.id, sufficient).compareTo(LocalDateTime.now()) <= 0, "This amount should be sufficient to leave");
+                assertThrows(ParkingException.class, () -> parking.leave(t.id, sufficient), "Should be already paid");
             });
         }
 
@@ -177,6 +177,7 @@ public class ParkingTest {
                         "Non valid timestamp was issued");
                 assertNotEquals(expected.map(t -> t.id), issued.map(t -> t.id));
                 assertNotEquals(expected, issued);
+                assertEquals(issued, parking.getTicket(i.id));
             });
         }
 
@@ -194,7 +195,7 @@ public class ParkingTest {
                     .stream()
                     .map(e -> new Pair<>(e.getKey(), namesGenerator.apply(e.getKey(), e.getValue())))
                     .collect(toMap(Pair::getKey, Pair::getValue));
-            var parking = new Parking(t -> 0f, slots);
+            var parking = new Parking(t -> 0.0, slots);
             indexedSizes.keySet().stream().sorted(Comparator.comparingInt(EngineType::ordinal).reversed())
                     .forEach(t -> assertParkingCapacity(parking, t, indexedSizes.get(t)));
         }

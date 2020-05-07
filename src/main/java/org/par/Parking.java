@@ -11,12 +11,12 @@ import static org.par.Parking.EngineType.*;
 
 public class Parking {
 
-    private final Function<Ticket, Float> pricing;
+    private final Function<Ticket, Double> pricing;
     private final Map<EngineType, List<Slot>> slots;
-    private final Set<Ticket> tickets = new HashSet<>();
+    private final Map<UUID, Ticket> tickets = new HashMap<>();
 
 
-    public Parking(Function<Ticket, Float> pricing, Map<EngineType, List<String>> slots) {
+    public Parking(Function<Ticket, Double> pricing, Map<EngineType, List<String>> slots) {
         this.pricing = pricing;
         this.slots = slots.entrySet()
                 .stream()
@@ -43,7 +43,7 @@ public class Parking {
 
     private Ticket createTicket(EngineType engineType, Slot slot) {
         var ticket = new Ticket(engineType, slot);
-        tickets.add(ticket);
+        tickets.put(ticket.id, ticket);
         return ticket;
     }
 
@@ -56,20 +56,25 @@ public class Parking {
 
     }
 
-    public synchronized LocalDateTime leave(Ticket ticket, float payment) {
-        if (tickets.contains(ticket)) {
-            var owed = checkOwed(ticket);
+    public synchronized LocalDateTime leave(UUID id, double payment) {
+        var ticket = tickets.get(id);
+        if (ticket != null) {
+            var owed = checkOwed(id);
             if (payment < owed)
                 throw new ParkingException("Insufficient payment:" + payment + " ,required:" + owed);
             slots.merge(ticket.slot.engineType, List.of(ticket.slot), (l1, l2) ->
                     Stream.concat(l1.stream(), l2.stream()).collect(Collectors.toList()));
-            tickets.remove(ticket);
+            tickets.remove(id);
             return LocalDateTime.now();
-        } else throw new ParkingException("Unknown ticket " + ticket.id);
+        } else throw new ParkingException("Unknown ticket " + id);
     }
 
-    public float checkOwed(Ticket t) {
-        return pricing.apply(t);
+    public double checkOwed(UUID id) {
+        return getTicket(id).map(pricing).orElse(0.0);
+    }
+
+    public Optional<Ticket> getTicket(UUID id) {
+        return Optional.ofNullable(tickets.get(id));
     }
 
     public enum EngineType {
