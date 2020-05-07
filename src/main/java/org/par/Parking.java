@@ -15,6 +15,7 @@ public class Parking {
     private final Map<EngineType, List<Slot>> slots;
     private final Set<Ticket> tickets = new HashSet<>();
 
+
     public Parking(Function<Ticket, Float> pricing, Map<EngineType, List<String>> slots) {
         this.pricing = pricing;
         this.slots = slots.entrySet()
@@ -46,15 +47,16 @@ public class Parking {
         return ticket;
     }
 
-    private Optional<Slot> assign(EngineType t) {
+    private synchronized Optional<Slot> assign(EngineType t) {
         var matchingSlots = slots.putIfAbsent(t, new ArrayList<>());
         if (matchingSlots != null && !matchingSlots.isEmpty())
             return Optional.of(matchingSlots.remove(0));
         else
             return Optional.empty();
+
     }
 
-    public float leave(Ticket ticket, float payment) {
+    public synchronized LocalDateTime leave(Ticket ticket, float payment) {
         if (tickets.contains(ticket)) {
             var owed = checkOwed(ticket);
             if (payment < owed)
@@ -62,7 +64,7 @@ public class Parking {
             slots.merge(ticket.slot.engineType, List.of(ticket.slot), (l1, l2) ->
                     Stream.concat(l1.stream(), l2.stream()).collect(Collectors.toList()));
             tickets.remove(ticket);
-            return payment - owed;
+            return LocalDateTime.now();
         } else throw new ParkingException("Unknown ticket " + ticket.id);
     }
 

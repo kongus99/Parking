@@ -11,7 +11,10 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
 import java.util.function.BiFunction;
+import java.util.function.BinaryOperator;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.IntStream;
@@ -101,6 +104,44 @@ public class ParkingTest {
         assertPays(parking, HI_ELECTRIC, 365f, 300f, 400f);
     }
 
+    @Test
+    void enteringAndLeavingMustBeSynchronized() {
+        var parking = new Parking(t -> 0f, Map.of(GAS, List.of("A")));
+        var pool = Executors.newFixedThreadPool(5);
+        Map<Integer, Pair<LocalDateTime, LocalDateTime>> runResults = new ConcurrentHashMap<>();
+        var parkingEntries = 1000;
+        var yesterday = LocalDateTime.now().minus(1, DAYS);
+        IntStream.range(0, parkingEntries).boxed().map(i -> pool.submit(() -> parking.enter(GAS).ifPresentOrElse(
+                t -> runResults.put(i, new Pair<>(t.issueTime, parking.leave(t, 0f))),
+                () -> runResults.put(i, new Pair<>(yesterday, yesterday)))))
+                .parallel().forEach(
+                f -> {
+                    try {
+                        f.get();
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                });
+        assertEquals(parkingEntries, runResults.size());
+        //
+        var onlySuccessfulSortedByTime =
+                runResults.values().stream().filter(p -> !p.getKey().equals(yesterday))
+                        .sorted((p1, p2) -> {
+                            int cmp = p1.getKey().compareTo(p2.getKey());
+                            if (cmp == 0)
+                                return p1.getValue().compareTo(p2.getValue());
+                            return cmp;
+                        })
+                        .collect(toList());
+        BinaryOperator<Pair<LocalDateTime, LocalDateTime>> condition = (acc, v) -> {
+            if (acc == null || acc.getValue().isAfter(v.getKey())) {
+                return null;
+            } else return v;
+        };
+        assertNotNull(onlySuccessfulSortedByTime.stream().reduce(new Pair<>(yesterday, yesterday), condition),
+                "Every successful parking should occur after previous car leaves");
+    }
+
     public static class ParkingAssertions {
 
         static void checkTicket(Parking parking, EngineType engineType, Consumer<Ticket> checks) {
@@ -112,8 +153,8 @@ public class ParkingTest {
 
         static void assertEnterAndLeave(Parking parking, EngineType engineType) {
             checkTicket(parking, engineType, t -> {
-                assertEquals(0, parking.leave(t, 0));
-                assertThrows(ParkingException.class, () -> parking.leave(t, 0), "Issued ticket should not work the second time.");
+                assertTrue(parking.leave(t, 0).compareTo(LocalDateTime.now()) <=0, "Ticket should work");
+                assertThrows(ParkingException.class, () -> parking.leave(t, 0), "Issued ticket should not work the second time");
             });
         }
 
@@ -121,7 +162,7 @@ public class ParkingTest {
             checkTicket(parking, engineType, t -> {
                 assertEquals(exact, parking.checkOwed(t));
                 assertThrows(ParkingException.class, () -> parking.leave(t, insufficient), "Should not leave because of insufficient payment");
-                assertEquals(sufficient - exact, parking.leave(t, sufficient));
+                assertTrue(parking.leave(t, sufficient).compareTo(LocalDateTime.now()) <=0, "This amount should be sufficient to leave");
                 assertThrows(ParkingException.class, () -> parking.leave(t, sufficient), "Should be already paid");
             });
         }
