@@ -39,9 +39,8 @@ as well as change the default/active [Spring profile](https://www.baeldung.com/s
 ### Further development
 This project in its state should be fully functional, but there are still areas in which it can be improved. Currently, there is no logging
 except for standard Spring logging, as well as there is no persistence layer that would allow the server to be restarted without
-losing data. The payment method is extremely simplistic and should be replaced by some third party payment provider. There are also other
-things that can be improved, but for the given scope it should be sufficient.
+losing data. The payment method is extremely simplistic and should be replaced by some third party payment provider. There are also other things that can be improved, but for the given scope it should be sufficient.
 
-##### Licence
+#### Licence
 Parking has MIT [licence](https://github.com/kongus99/Parking/LICENCE)
  
