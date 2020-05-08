@@ -42,5 +42,5 @@ except for standard Spring logging, as well as there is no persistence layer tha
 losing data. The payment method is extremely simplistic and should be replaced by some third party payment provider. There are also other things that can be improved, but for the given scope it should be sufficient.
 
 #### Licence
-Parking has MIT [licence](https://github.com/kongus99/Parking/LICENCE)
+Parking has MIT [licence](https://github.com/kongus99/Parking/blob/master/LICENCE)
  
