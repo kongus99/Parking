@@ -15,12 +15,12 @@ import java.util.UUID;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.mockito.Mockito.when;
+import static org.parking.service.Parking.*;
 import static org.parking.service.Parking.EngineType.*;
 import static org.parking.service.Parking.Slot;
 import static org.parking.service.Parking.Ticket;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(ParkingController.class)
 public class ParkingControllerTest {
@@ -72,14 +72,15 @@ public class ParkingControllerTest {
     public void youCanLeaveParkingIfYouPayEnough() throws Exception {
         var uuid = UUID.randomUUID();
         when(parking.leave(uuid, 0))
-                .thenThrow(Parking.ParkingException.class);
+                .thenThrow(new ParkingException("Insufficient payment"));
         when(parking.leave(uuid, 10))
                 .thenReturn(LocalDateTime.now());
         mvc.perform(delete("/parking/ticket/" + uuid + "?payment=10"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("T")));
         mvc.perform(delete("/parking/ticket/" + uuid + "?payment=0"))
-                .andExpect(status().is(HttpStatus.BAD_REQUEST.value()));
+                .andExpect(status().is(HttpStatus.BAD_REQUEST.value()))
+                .andExpect(status().reason("Insufficient payment"));
     }
 
     @Test

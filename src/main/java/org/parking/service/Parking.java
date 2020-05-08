@@ -150,7 +150,6 @@ public class Parking {
         }
     }
 
-    @ResponseStatus(value = HttpStatus.BAD_REQUEST)
     public static class ParkingException extends RuntimeException {
         public ParkingException(String cause) {
             super(cause);
