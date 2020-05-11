@@ -22,7 +22,7 @@ Finally, you can run the server using **bootRun** Gradle target:
 ```bash
 gradlew bootRun
 ```
-For deployment, you can always build jar file with Java and run it directly.
+For deployment, you can always build jar file with Gradle and run it directly.
 ```bash
 gradlew bootJar
 ```
